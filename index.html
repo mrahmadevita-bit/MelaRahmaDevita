@@ -1,13 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
+<html lang="id">
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Math Adventure Lobby</title>
+    
+    <!-- 1. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=Fredoka:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. Load React & ReactDOM (UMD) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- 4. Load Babel for JSX support in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 5. Load Lucide Icons (UMD) -->
+    <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.min.js"></script>
+
     <script>
       tailwind.config = {
         theme: {
@@ -21,6 +36,7 @@
               'cloud-slow': 'moveCloud 60s linear infinite',
               'cloud-fast': 'moveCloud 40s linear infinite',
               'pop': 'pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              'wiggle': 'wiggle 1s ease-in-out infinite',
             },
             keyframes: {
               float: {
@@ -34,6 +50,10 @@
               pop: {
                 '0%': { transform: 'scale(0.8)', opacity: '0' },
                 '100%': { transform: 'scale(1)', opacity: '1' },
+              },
+              wiggle: {
+                '0%, 100%': { transform: 'rotate(-3deg)' },
+                '50%': { transform: 'rotate(3deg)' },
               }
             }
           },
@@ -41,23 +61,781 @@
       }
     </script>
     <style>
-      body {
-        margin: 0;
-        overflow: hidden; /* Prevent scrolling for game-like feel */
-      }
+      body { margin: 0; overflow: hidden; user-select: none; }
+      /* Custom scrollbar hide */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
   }
 }
 </script>
 </head>
-  <body>
+<body>
     <div id="root"></div>
-  </body>
+
+    <!-- MAIN REACT SCRIPT -->
+    <script type="text/babel">
+        // --- IMPORTS FROM GLOBAL (CDN) ---
+        const { useState, useEffect, useRef } = React;
+        const { 
+            Clock, Scale, Lock, Play, X, Edit2, Check, Timer, GlassWater, Apple, 
+            BookOpen, Gamepad2, GraduationCap, ArrowRight, ArrowLeft, Home, 
+            Eye, Sun, Moon, Calendar, Globe, PartyPopper, LayoutGrid, Bed, 
+            School, Backpack, Palmtree, MoonStar, Unlock, CheckCircle, ChevronRight, 
+            RefreshCcw, MoveDown, MoveUp, Star, Coins, Cloud, Trees
+        } = lucideReact;
+
+        // --- CONSTANTS & TYPES (Simulated) ---
+        
+        const AVATAR_OPTIONS = [
+          { id: 'cat', name: 'Kucing', emoji: '🐱', colors: 'bg-orange-200 border-orange-400' },
+          { id: 'rabbit', name: 'Kelinci', emoji: '🐰', colors: 'bg-pink-100 border-pink-300' },
+          { id: 'panda', name: 'Panda', emoji: '🐼', colors: 'bg-gray-200 border-gray-500' },
+          { id: 'bird', name: 'Burung', emoji: '🐦', colors: 'bg-blue-200 border-blue-400' },
+        ];
+
+        const DEFAULT_PROFILE = {
+          name: 'Petualang Cilik',
+          avatar: 'rabbit',
+        };
+
+        const SIMULATION_QUESTIONS = [
+            { id: 1, text: "Misi: Atur jam menjadi pukul 07.30!", target: { h: 7, m: 30 } },
+            { id: 2, text: "Misi: Atur jam menjadi pukul 10.15!", target: { h: 10, m: 15 } },
+            { id: 3, text: "Misi: Atur jam menjadi pukul 03.45!", target: { h: 3, m: 45 } }
+        ];
+
+        const QUIZ_QUESTIONS = [
+            {
+                id: 1,
+                question: "Jarum pendek menunjuk angka 3. Jarum panjang menunjuk angka 12. Pukul berapakah itu?",
+                time: { h: 3, m: 0 },
+                options: [
+                { text: "03.00", isCorrect: true, color: "bg-blue-500 border-blue-700 hover:bg-blue-400" },
+                { text: "12.30", isCorrect: false, color: "bg-orange-500 border-orange-700 hover:bg-orange-400" },
+                { text: "02.00", isCorrect: false, color: "bg-red-500 border-red-700 hover:bg-red-400" }
+                ]
+            },
+            {
+                id: 2,
+                question: "Jika jarum panjang menunjuk angka 6, berarti sudah lewat berapa menit?",
+                time: { h: 12, m: 30 },
+                options: [
+                { text: "15 Menit", isCorrect: false, color: "bg-purple-500 border-purple-700 hover:bg-purple-400" },
+                { text: "30 Menit", isCorrect: true, color: "bg-green-500 border-green-700 hover:bg-green-400" },
+                { text: "45 Menit", isCorrect: false, color: "bg-pink-500 border-pink-700 hover:bg-pink-400" }
+                ]
+            }
+        ];
+
+        const SORTING_ITEMS = [
+            { id: 'pepper', name: 'Bubuk Lada', type: 'light', emoji: '🧂', color: 'bg-stone-200' },
+            { id: 'watermelon', name: 'Semangka', type: 'heavy', emoji: '🍉', color: 'bg-green-200' },
+            { id: 'sugar', name: 'Gula Pasir', type: 'light', emoji: '🍬', color: 'bg-white' },
+            { id: 'rice', name: 'Karung Beras', type: 'heavy', emoji: '🌾', color: 'bg-amber-100' },
+            { id: 'cloves', name: 'Cengkeh', type: 'light', emoji: '🍂', color: 'bg-orange-100' },
+            { id: 'banana', name: 'Pisang', type: 'heavy', emoji: '🍌', color: 'bg-yellow-100' },
+        ];
+
+        const WEIGHT_ITEMS = [
+            { id: 'marble', name: 'Kelereng', weight: 10, emoji: '🔮', size: 'w-8 h-8' },
+            { id: 'apple', name: 'Apel', weight: 150, emoji: '🍎', size: 'w-12 h-12' },
+            { id: 'mango', name: 'Mangga', weight: 300, emoji: '🥭', size: 'w-14 h-14' },
+            { id: 'melon', name: 'Melon', weight: 1500, emoji: '🍈', size: 'w-20 h-20' },
+            { id: 'watermelon', name: 'Semangka', weight: 3000, emoji: '🍉', size: 'w-24 h-24' },
+        ];
+
+        const WEIGHT_QUIZ_QUESTIONS = [
+            {
+                id: 1,
+                question: "Jika timbangan bergerak TURUN ke satu sisi, artinya benda di sisi itu...",
+                options: [
+                { text: "Lebih Ringan", isCorrect: false, color: "bg-blue-500 border-blue-700 hover:bg-blue-400" },
+                { text: "Lebih Berat", isCorrect: true, color: "bg-red-500 border-red-700 hover:bg-red-400" },
+                { text: "Sama Berat", isCorrect: false, color: "bg-stone-500 border-stone-700 hover:bg-stone-400" }
+                ]
+            },
+            {
+                id: 2,
+                question: "Satuan apa yang digunakan untuk menimbang benda RINGAN seperti bumbu dapur?",
+                options: [
+                { text: "Kilogram (Kg)", isCorrect: false, color: "bg-orange-500 border-orange-700 hover:bg-orange-400" },
+                { text: "Meter (m)", isCorrect: false, color: "bg-purple-500 border-purple-700 hover:bg-purple-400" },
+                { text: "Gram (g)", isCorrect: true, color: "bg-green-500 border-green-700 hover:bg-green-400" }
+                ]
+            }
+        ];
+
+        // --- COMPONENTS ---
+
+        // 1. Background
+        const Background = ({ timeOfDay, theme = 'default' }) => {
+            const getGradient = () => {
+                switch (timeOfDay) {
+                case 'morning': return 'from-sky-300 via-sky-200 to-emerald-100';
+                case 'noon': return 'from-blue-500 via-sky-300 to-emerald-200';
+                case 'afternoon': return 'from-purple-800 via-rose-500 to-amber-500';
+                case 'night': return 'from-indigo-900 via-purple-900 to-slate-800';
+                default: return 'from-sky-300 to-blue-200';
+                }
+            };
+
+            const getGrassColor = () => {
+                switch (timeOfDay) {
+                case 'morning': return 'from-green-400 via-green-500 to-green-700';
+                case 'noon': return 'from-green-500 via-green-600 to-green-800';
+                case 'afternoon': return 'from-amber-700 via-green-700 to-green-900';
+                case 'night': return 'from-indigo-900 via-slate-700 to-slate-900';
+                default: return 'from-green-500 to-green-700';
+                }
+            };
+
+            const isNight = timeOfDay === 'night';
+            const isNoon = timeOfDay === 'noon';
+            const isSunset = timeOfDay === 'afternoon';
+            
+            let sunPosition = '';
+            if (timeOfDay === 'morning') sunPosition = 'top-10 left-[10%]';
+            else if (timeOfDay === 'noon') sunPosition = 'top-5 left-1/2 -translate-x-1/2 scale-125';
+            else if (timeOfDay === 'afternoon') sunPosition = 'top-[60%] left-[80%] scale-110';
+            else sunPosition = 'translate-y-[150vh]';
+            
+            return (
+                <div className={`fixed inset-0 w-full h-full bg-gradient-to-b ${getGradient()} -z-50 transition-colors duration-1000 ease-in-out`}>
+                    {/* Sun */}
+                    <div className={`absolute transition-all duration-1000 ease-in-out ${sunPosition}`}>
+                        <Sun className={`w-32 h-32 ${isSunset ? 'text-orange-400 fill-orange-500' : 'text-yellow-300 fill-yellow-400'} drop-shadow-[0_0_60px_rgba(253,224,71,0.9)]`} />
+                        {!isSunset && !isNight && <div className="absolute inset-0 bg-white/30 blur-3xl rounded-full scale-150 animate-pulse" />}
+                    </div>
+
+                    {/* Moon */}
+                    <div className={`absolute top-10 right-[15%] transition-transform duration-1000 ${!isNight ? '-translate-y-[150vh]' : 'translate-y-0 animate-float'}`}>
+                        <Moon className="w-24 h-24 text-blue-100 fill-blue-50 drop-shadow-[0_0_40px_rgba(255,255,255,0.6)]" />
+                    </div>
+
+                    {/* Stars */}
+                    <div className={`absolute inset-0 transition-opacity duration-1000 ${isNight ? 'opacity-100' : 'opacity-0'}`}>
+                        {[...Array(40)].map((_, i) => (
+                            <div key={i} className="absolute bg-white rounded-full animate-pulse shadow-[0_0_8px_white]"
+                            style={{
+                                top: `${Math.random() * 60}%`, left: `${Math.random() * 100}%`,
+                                width: `${Math.random() * 4 + 2}px`, height: `${Math.random() * 4 + 2}px`,
+                                animationDelay: `${Math.random() * 3}s`
+                            }} />
+                        ))}
+                    </div>
+
+                    {/* Clouds */}
+                    <div className={`absolute top-0 left-0 w-full h-3/4 pointer-events-none transition-all duration-1000 ${isNight ? 'opacity-10' : 'opacity-90'}`}>
+                        <Cloud className="absolute top-16 -left-20 w-64 h-40 text-white/90 fill-white/80 animate-cloud-slow drop-shadow-xl" />
+                        <Cloud className="absolute top-32 w-48 h-32 text-white/70 fill-white/60 animate-cloud-fast drop-shadow-lg" style={{ animationDelay: '-10s' }} />
+                        <div className={`transition-opacity duration-1000 ${isNoon ? 'opacity-100' : 'opacity-0'}`}>
+                            <Cloud className="absolute top-10 right-[40%] w-72 h-48 text-white/80 fill-white/75 animate-cloud-slow drop-shadow-2xl" style={{ animationDelay: '-5s' }} />
+                            <Cloud className="absolute top-48 left-[20%] w-56 h-36 text-white/60 fill-white/50 animate-cloud-fast drop-shadow-md" style={{ animationDelay: '-15s' }} />
+                        </div>
+                        <Cloud className="absolute top-10 right-20 w-80 h-48 text-white/80 fill-white/70 animate-cloud-slow drop-shadow-2xl" style={{ animationDelay: '-25s' }} />
+                        {isSunset && <div className="absolute inset-0 bg-gradient-to-t from-orange-500/30 to-purple-500/10 mix-blend-overlay" />}
+                    </div>
+
+                    {/* Trees (Garden Theme) */}
+                    {theme === 'garden' && (
+                        <div className="absolute bottom-[20%] w-full flex justify-between px-10 pointer-events-none opacity-80 z-0">
+                            <div className="relative w-40 h-64 transform -translate-x-10">
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-32 bg-amber-900 rounded-lg" />
+                                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-green-600 rounded-full shadow-lg flex items-center justify-center">
+                                    <div className="w-40 h-40 bg-green-500 rounded-full" />
+                                    <div className="absolute top-10 left-10 w-4 h-4 bg-red-500 rounded-full" />
+                                    <div className="absolute top-20 right-10 w-4 h-4 bg-red-500 rounded-full" />
+                                    <div className="absolute bottom-10 left-20 w-4 h-4 bg-red-500 rounded-full" />
+                                </div>
+                            </div>
+                            <div className="relative w-48 h-72 transform translate-x-10 scale-x-[-1]">
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-40 bg-amber-900 rounded-lg" />
+                                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 w-56 h-56 bg-green-600 rounded-full shadow-lg flex items-center justify-center">
+                                    <div className="w-48 h-48 bg-green-500 rounded-full" />
+                                    <div className="absolute top-12 right-12 w-4 h-4 bg-red-500 rounded-full" />
+                                    <div className="absolute bottom-14 left-14 w-4 h-4 bg-red-500 rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Terrain */}
+                    <div className={`absolute bottom-0 w-full h-[25%] bg-gradient-to-b ${getGrassColor()} rounded-t-[40%_20%] scale-110 shadow-[0_-10px_60px_rgba(0,0,0,0.3)] z-0 transition-colors duration-1000`}>
+                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-200 to-transparent" />
+                        <div className="flex justify-around items-end w-full h-full pb-6 px-4">
+                            {[...Array(15)].map((_, i) => (
+                                <div key={i} className={`w-3 bg-gradient-to-t ${isNight ? 'from-black to-indigo-900' : isSunset ? 'from-amber-900 to-amber-600' : 'from-green-800 to-green-400'} rounded-t-full opacity-60 transform origin-bottom ${i % 2 === 0 ? 'rotate-6 h-12' : '-rotate-6 h-8'}`} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. AvatarSelector
+        const AvatarSelector = ({ isOpen, onClose, onSelect, currentAvatar }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-pop">
+                    <div className="bg-white rounded-3xl p-6 w-[90%] max-w-md shadow-2xl border-4 border-yellow-400 relative">
+                        <button onClick={onClose} className="absolute -top-4 -right-4 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors border-2 border-white"><X size={24} strokeWidth={3} /></button>
+                        <h2 className="text-2xl font-fredoka font-bold text-center text-slate-700 mb-6">Pilih Temanmu!</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            {AVATAR_OPTIONS.map((option) => (
+                                <button key={option.id} onClick={() => { onSelect(option.id); onClose(); }} className={`group relative p-4 rounded-2xl border-b-4 transition-all duration-200 active:border-b-0 active:translate-y-1 flex flex-col items-center gap-2 ${currentAvatar === option.id ? 'bg-yellow-100 border-yellow-400 ring-4 ring-yellow-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                                    <div className={`text-5xl p-4 rounded-full ${option.colors} shadow-inner`}>{option.emoji}</div>
+                                    <span className="font-baloo font-bold text-lg text-slate-700">{option.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. PlayerProfile
+        const PlayerProfile = ({ profile, onUpdateName, onAvatarClick }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [tempName, setTempName] = useState(profile.name);
+            const inputRef = useRef(null);
+            const avatarConfig = AVATAR_OPTIONS.find(a => a.id === profile.avatar) || AVATAR_OPTIONS[0];
+
+            useEffect(() => { if (isEditing && inputRef.current) inputRef.current.focus(); }, [isEditing]);
+            const handleSaveName = () => { if (tempName.trim()) { onUpdateName(tempName); setIsEditing(false); } };
+            const handleKeyDown = (e) => { if (e.key === 'Enter') handleSaveName(); };
+
+            return (
+                <div className="absolute top-6 left-6 z-40 flex items-center gap-5 animate-pop">
+                    <button onClick={onAvatarClick} className="relative group cursor-pointer transition-transform hover:scale-105 active:scale-95">
+                        <div className="relative z-10 w-28 h-28 rounded-full border-[6px] border-yellow-400 bg-gradient-to-b from-slate-100 to-slate-300 shadow-[0_4px_0_rgba(180,83,9,1),0_10px_20px_rgba(0,0,0,0.3)] overflow-hidden flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full shadow-[inset_0_4px_8px_rgba(0,0,0,0.1)] pointer-events-none" />
+                            <span className="text-7xl drop-shadow-md filter contrast-125">{avatarConfig.emoji}</span>
+                        </div>
+                    </button>
+                    <div className="flex flex-col items-start gap-1">
+                        <div className="relative">
+                            <div className="flex items-center gap-3">
+                                {isEditing ? (
+                                    <div className="flex items-center">
+                                        <input ref={inputRef} type="text" value={tempName} onChange={(e) => setTempName(e.target.value)} onBlur={handleSaveName} onKeyDown={handleKeyDown} className="bg-black/20 backdrop-blur-md rounded-lg px-2 py-1 border-2 border-yellow-400 text-white font-fredoka font-bold text-2xl outline-none shadow-inner w-40" maxLength={12} />
+                                        <button onMouseDown={handleSaveName} className="ml-2 bg-green-500 text-white rounded-full p-2 shadow-md hover:bg-green-600"><Check size={20} strokeWidth={3} /></button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="font-fredoka font-extrabold text-4xl text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-orange-500 drop-shadow-[0_2px_0_rgba(146,64,14,1)] filter">{profile.name}</h1>
+                                        <button onClick={() => setIsEditing(true)} className="bg-white/20 hover:bg-white/40 p-2 rounded-full backdrop-blur-sm transition-all shadow-sm group animate-pulse hover:animate-none"><Edit2 size={20} className="text-white drop-shadow-md" strokeWidth={2.5} /></button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-col w-48 mt-1">
+                            <div className="flex justify-between items-end px-1 mb-0.5">
+                                <span className="text-xs font-black text-yellow-100 tracking-wider drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">LEVEL 1</span>
+                                <span className="text-xs font-bold text-yellow-200 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">0/100</span>
+                            </div>
+                            <div className="w-full h-5 bg-black/40 rounded-full border-2 border-slate-600/50 backdrop-blur-sm shadow-inner relative overflow-hidden">
+                                <div className="h-full w-[45%] bg-gradient-to-r from-yellow-500 via-yellow-300 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(250,204,21,0.5)] relative">
+                                    <div className="absolute top-0 left-0 w-full h-[40%] bg-white/40 rounded-t-full" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. GuideCharacter
+        const GuideCharacter = ({ playerName, lessonStep = -1, adventureMode, adventureType = 'time', timeOfDay }) => {
+            const [speech, setSpeech] = useState(null);
+            const isSim = adventureMode === 'simulation';
+            const isQuiz = adventureMode === 'quiz';
+            const isWeight = adventureType === 'weight';
+
+            useEffect(() => {
+                if (isWeight && lessonStep >= 0) {
+                    if (lessonStep === 0) setSpeech("Wah, Semangka ini berat sekali!");
+                    else if (lessonStep === 1) setSpeech("Timbangan miring ke benda yang berat!");
+                    const timer = setTimeout(() => setSpeech(null), 4000);
+                    return () => clearTimeout(timer);
+                }
+                if (isSim) {
+                    setSpeech(`Geser tombol di bawah untuk memutar jam!`);
+                    const timer = setTimeout(() => setSpeech(null), 4000);
+                    return () => clearTimeout(timer);
+                }
+                if (isQuiz) {
+                    setSpeech(`Siap untuk kuis? Ayo tunjukkan kemampuanmu!`);
+                    const timer = setTimeout(() => setSpeech(null), 4000);
+                    return () => clearTimeout(timer);
+                }
+                if (lessonStep === -1) {
+                    let greeting = "Halo";
+                    if (timeOfDay === 'morning') greeting = "Selamat Pagi";
+                    else if (timeOfDay === 'noon') greeting = "Selamat Siang";
+                    else if (timeOfDay === 'afternoon') greeting = "Selamat Sore";
+                    else if (timeOfDay === 'night') greeting = "Selamat Malam";
+                    setSpeech(`${greeting}, ${playerName}! Ayo bertualang!`);
+                    const timer = setTimeout(() => setSpeech(null), 4000);
+                    return () => clearTimeout(timer);
+                } else if (adventureType === 'time') {
+                    const hints = [
+                        "Ayo belajar membaca jam!", "Kelinci itu cepat, Kura-kura lambat!",
+                        "Satu lompatan = 5 Menit!", "Haus? Minum dulu yuk!",
+                        "Wah, banyak sekali angkanya!", "Ayo atur waktumu!"
+                    ];
+                    if (hints[lessonStep]) {
+                        setSpeech(hints[lessonStep]);
+                        const timer = setTimeout(() => setSpeech(null), 3000);
+                        return () => clearTimeout(timer);
+                    }
+                }
+            }, [playerName, lessonStep, isSim, isQuiz, isWeight, adventureType, timeOfDay]);
+
+            const handleInteract = () => {
+                if (lessonStep === -1) {
+                    const msgs = ["Ayo pilih petualangan!", "Mau belajar Waktu atau Berat?", "Aku siap membantu!"];
+                    setSpeech(msgs[Math.floor(Math.random() * msgs.length)]);
+                } else {
+                    if (adventureMode === 'learning') setSpeech("Kamu harus belajar dulu sebelum mencoba Simulasi.");
+                    else if (adventureMode === 'simulation') setSpeech("Setelah lancar Simulasi, baru kamu bisa lanjut ke Kuis!");
+                    else if (adventureMode === 'quiz') setSpeech("Ayo kerjakan Kuis! Tunjukkan kamu pasti bisa!");
+                }
+                setTimeout(() => setSpeech(null), 4000);
+            };
+
+            return (
+                <div className={`absolute bottom-10 z-20 pointer-events-auto transition-transform duration-500 ease-in-out`}>
+                    {speech && (
+                        <div className={`absolute w-48 bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)] border-2 border-amber-900 animate-pop z-50 ${isSim || isQuiz ? 'top-20 right-[100%] mr-4 rounded-2xl rounded-tr-none' : 'top-20 left-[100%] ml-4 rounded-2xl rounded-tl-none'}`}>
+                            <p className="font-fredoka text-amber-900 text-sm leading-tight text-center font-bold">{speech}</p>
+                        </div>
+                    )}
+                    <div onClick={handleInteract} className={`relative w-48 h-80 sm:w-56 sm:h-96 cursor-pointer group origin-bottom hover:scale-[1.02] transition-transform ${isSim || isQuiz ? '-scale-x-100' : ''}`}>
+                        <div className="w-full h-full relative flex justify-center items-end">
+                            {/* Legs */}
+                            <div className="absolute bottom-0 w-24 h-32 flex justify-between px-2 z-10">
+                                <div className="w-8 h-full bg-orange-100 rounded-b-xl relative">
+                                    <div className="absolute bottom-0 w-10 -left-1 h-12 bg-amber-900 rounded-lg rounded-t-sm border-b-4 border-amber-950" />
+                                    <div className="absolute bottom-12 w-full h-6 bg-white border-t-2 border-red-400" />
+                                </div>
+                                <div className="w-8 h-full bg-orange-100 rounded-b-xl relative transform -translate-x-1">
+                                    <div className="absolute bottom-0 w-10 -left-1 h-12 bg-amber-900 rounded-lg rounded-t-sm border-b-4 border-amber-950" />
+                                    <div className="absolute bottom-12 w-full h-6 bg-white border-t-2 border-red-400" />
+                                </div>
+                            </div>
+                            {/* Torso */}
+                            <div className="absolute bottom-28 w-24 h-32 bg-stone-100 rounded-xl z-20 flex flex-col items-center shadow-sm">
+                                <div className="w-full h-full bg-stone-200 rounded-xl relative overflow-hidden border-l-4 border-r-4 border-stone-300">
+                                    <div className="absolute top-0 inset-x-4 bottom-0 bg-white" />
+                                    <div className="absolute top-8 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-800 rounded-full" />
+                                    <div className="absolute top-16 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-800 rounded-full" />
+                                </div>
+                                <div className="absolute -bottom-4 w-28 h-12 bg-stone-400 rounded-xl shadow-inner z-20" />
+                            </div>
+                            {/* Scarf */}
+                            <div className="absolute bottom-[13.5rem] w-28 h-12 bg-orange-500 rounded-full z-30 shadow-md flex items-center justify-center">
+                                <div className="w-32 h-6 bg-orange-600 rounded-full mt-2 opacity-20" />
+                            </div>
+                            {/* Floating Props */}
+                            {isQuiz && <div className="absolute bottom-40 -left-6 z-30 animate-float"><div className="w-12 h-16 bg-amber-800 rounded-sm border-2 border-amber-950 flex flex-col items-center p-1 shadow-sm transform -rotate-12"><div className="w-full h-2 bg-stone-400 mb-1" /><div className="w-full h-full bg-white opacity-80" /></div></div>}
+                            <div className="absolute bottom-40 -right-6 z-30">
+                                {isWeight && <div className="animate-bounce"><div className="relative w-10 h-10 bg-red-500 rounded-full border border-red-700 shadow-sm"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-3 bg-stone-700" /><div className="absolute top-0 right-2 w-3 h-2 bg-green-500 rounded-full rounded-bl-none" /></div></div>}
+                                {(lessonStep === 1 && !isWeight) && <div className="bg-slate-200 rounded-full p-2 border-2 border-slate-400 shadow-sm animate-pulse transform rotate-12"><Timer size={28} className="text-slate-700" /></div>}
+                                {!isSim && !isQuiz && !isWeight && lessonStep === 2 && <div className="bg-yellow-300 rounded-full w-12 h-12 flex items-center justify-center border-2 border-yellow-500 shadow-md animate-bounce"><span className="font-black text-yellow-900 text-xl">5!</span></div>}
+                                {!isSim && !isQuiz && !isWeight && lessonStep === 3 && <div className="animate-wiggle transform rotate-12"><GlassWater size={36} className="text-blue-400 fill-blue-200/50 drop-shadow-sm" /></div>}
+                                {!isSim && !isQuiz && !isWeight && lessonStep === 4 && <div className="animate-ping"><div className="text-5xl">✨</div></div>}
+                                {!isSim && !isQuiz && !isWeight && lessonStep === 5 && <div className="w-12 h-16 bg-red-500 rounded-sm border-2 border-red-700 transform rotate-12 shadow-sm flex flex-col items-center pt-2 animate-float"><div className="w-8 h-1 bg-white opacity-50 mb-1" /><div className="w-8 h-1 bg-white opacity-50 mb-1" /><div className="w-8 h-1 bg-white opacity-50" /></div>}
+                            </div>
+                            {/* Head */}
+                            <div className="absolute bottom-56 w-28 h-32 bg-orange-100 rounded-[2.5rem] z-30 shadow-sm flex flex-col items-center">
+                                <div className="relative w-full h-full">
+                                    <div className="absolute top-14 left-6 w-3 h-4 bg-slate-900 rounded-full" />
+                                    <div className="absolute top-14 right-6 w-3 h-4 bg-slate-900 rounded-full" />
+                                    {isQuiz && <div className="absolute top-12 left-1/2 -translate-x-1/2 w-20 h-8 flex justify-center gap-1"><div className="w-8 h-8 rounded-full border-4 border-slate-800 bg-white/20" /><div className="w-2 h-1 bg-slate-800 mt-4" /><div className="w-8 h-8 rounded-full border-4 border-slate-800 bg-white/20" /></div>}
+                                    {!isQuiz && <><div className="absolute top-16 left-3 w-5 h-2 bg-red-300 rounded-full blur-sm opacity-60" /><div className="absolute top-16 right-3 w-5 h-2 bg-red-300 rounded-full blur-sm opacity-60" /></>}
+                                    <div className="absolute top-20 left-1/2 -translate-x-1/2 w-6 h-3 border-b-4 border-amber-900 rounded-full" />
+                                    <div className="absolute top-0 w-full h-12 bg-amber-900 rounded-t-[2.5rem] rounded-bl-3xl" />
+                                    <div className="absolute top-4 -right-1 w-8 h-12 bg-amber-900 rounded-full" />
+                                </div>
+                            </div>
+                            {/* Hat */}
+                            <div className="absolute bottom-[20rem] w-40 h-16 z-40">
+                                <div className="absolute bottom-0 w-full h-6 bg-amber-800 rounded-full shadow-lg" />
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-24 h-14 bg-amber-700 rounded-t-2xl rounded-b-lg border-b-8 border-amber-900" />
+                            </div>
+                            {/* Backpack */}
+                            <div className="absolute bottom-44 w-20 h-24 z-25">
+                                <div className="absolute left-2 w-2 h-24 bg-amber-900 opacity-80" />
+                                <div className="absolute right-2 w-2 h-24 bg-amber-900 opacity-80" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. MenuButtons
+        const MenuButtons = ({ isNight, onTimeAdventureClick, onWeightAdventureClick }) => {
+            return (
+                <div className="absolute top-1/2 -translate-y-1/2 right-[5%] sm:right-[10%] z-30 flex flex-col gap-8 items-center pointer-events-auto">
+                    {/* Time */}
+                    <div className="relative group perspective-1000">
+                        <button onClick={onTimeAdventureClick} className="relative w-80 sm:w-96 h-32 sm:h-36 bg-gradient-to-b from-amber-100 to-amber-200 rounded-[2rem] border-[6px] border-amber-300 shadow-[0_10px_0_#d97706,0_20px_25px_rgba(0,0,0,0.3)] flex items-center p-5 gap-6 overflow-hidden transition-transform transform group-hover:-translate-y-1 active:translate-y-2 active:shadow-none cursor-pointer">
+                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/20 to-transparent" />
+                            <div className="relative z-10 w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-3xl flex items-center justify-center border-b-[6px] border-blue-800 shadow-inner group-hover:scale-110 transition-transform duration-300"><Clock size={48} className="text-white drop-shadow-md" /><div className="absolute top-0 left-0 w-full h-1/2 bg-white/20 rounded-t-2xl" /></div>
+                            <div className="text-left relative z-10 flex-1"><h3 className="font-fredoka font-extrabold text-3xl text-amber-900 drop-shadow-sm leading-none mb-2">Petualangan<br/>Waktu</h3><div className="flex items-center gap-2 bg-green-500/20 py-1 px-3 rounded-full w-fit border border-green-500/30"><Play size={14} className="text-green-700 fill-green-700" /><span className="text-sm font-baloo font-bold text-green-800 uppercase tracking-wide">Mulai!</span></div></div>
+                        </button>
+                    </div>
+                    {/* Weight */}
+                    <div className="relative group perspective-1000">
+                        <button onClick={onWeightAdventureClick} className="relative w-80 sm:w-96 h-32 sm:h-36 bg-gradient-to-b from-stone-100 to-stone-300 rounded-[2rem] border-[6px] border-stone-400 shadow-[0_10px_0_#78716c,0_20px_25px_rgba(0,0,0,0.3)] flex items-center p-5 gap-6 overflow-hidden transition-transform transform group-hover:-translate-y-1 active:translate-y-2 active:shadow-none">
+                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-900/20 to-transparent" />
+                            <div className="relative z-10 w-24 h-24 bg-gradient-to-br from-red-400 to-red-600 rounded-3xl flex items-center justify-center border-b-[6px] border-red-800 shadow-inner group-hover:scale-110 transition-transform duration-300"><Scale size={48} className="text-white drop-shadow-md" /><div className="absolute top-0 left-0 w-full h-1/2 bg-white/20 rounded-t-2xl" /></div>
+                            <div className="text-left relative z-10 flex-1"><h3 className="font-fredoka font-extrabold text-3xl text-stone-800 drop-shadow-sm leading-none mb-2">Petualangan<br/>Berat</h3><div className="flex items-center gap-2 bg-green-500/20 py-1 px-3 rounded-full w-fit border border-green-500/30"><Play size={14} className="text-green-700 fill-green-700" /><span className="text-sm font-baloo font-bold text-green-800 uppercase tracking-wide">Mulai!</span></div></div>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // 6. TimeAdventure
+        const TimeAdventure = ({ onBack, onSlideChange, mode, onModeChange, setTimeOfDay }) => {
+            const [slideIndex, setSlideIndex] = useState(0);
+            const [simQuestionIndex, setSimQuestionIndex] = useState(0);
+            const [userTime, setUserTime] = useState({ h: 10, m: 10 });
+            const [isSimCorrect, setIsSimCorrect] = useState(null);
+            const [quizIndex, setQuizIndex] = useState(0);
+            const [quizScore, setQuizScore] = useState(0);
+            const [quizFinished, setQuizFinished] = useState(false);
+
+            useEffect(() => { onSlideChange(slideIndex); }, [slideIndex, onSlideChange]);
+            useEffect(() => { setUserTime({ h: 10, m: 10 }); setIsSimCorrect(null); setQuizIndex(0); setQuizScore(0); setQuizFinished(false); }, [mode]);
+
+            // Simulation Logic
+            useEffect(() => {
+                if (mode === 'simulation') {
+                    const h = userTime.h;
+                    if (h >= 5 && h <= 9) setTimeOfDay('morning');
+                    else if (h === 10 || h === 11 || h === 12 || h === 1) setTimeOfDay('noon');
+                    else if (h >= 2 && h <= 4) setTimeOfDay('afternoon');
+                }
+            }, [userTime.h, mode, setTimeOfDay]);
+
+            const handleNext = () => { if (slideIndex < 5) setSlideIndex(prev => prev + 1); };
+            const handlePrev = () => { if (slideIndex > 0) setSlideIndex(prev => prev - 1); };
+
+            const handleSimCheckAnswer = () => {
+                const currentSim = SIMULATION_QUESTIONS[simQuestionIndex];
+                if (userTime.h === currentSim.target.h && userTime.m === currentSim.target.m) setIsSimCorrect(true);
+                else { setIsSimCorrect(false); setTimeout(() => setIsSimCorrect(null), 2000); }
+            };
+
+            const handleQuizAnswer = (isCorrect) => {
+                if (isCorrect) setQuizScore(prev => prev + 10);
+                setTimeout(() => {
+                    if (quizIndex < QUIZ_QUESTIONS.length - 1) setQuizIndex(prev => prev + 1);
+                    else setQuizFinished(true);
+                }, 500);
+            };
+
+            // Helpers for Renderers (Condensed for brevity)
+            const renderLearningVisuals = () => {
+                if (slideIndex === 0) return <div className="relative w-64 h-64 sm:w-80 sm:h-80 bg-white rounded-full border-[10px] border-slate-200 shadow-lg flex items-center justify-center">{[...Array(12)].map((_, i) => (<div key={i} className="absolute inset-0 text-center pt-2 font-fredoka font-bold text-3xl text-slate-600" style={{ transform: `rotate(${(i + 1) * 30}deg)` }}><span className="inline-block" style={{ transform: `rotate(-${(i + 1) * 30}deg)` }}>{i + 1}</span></div>))}<div className="absolute w-6 h-6 bg-slate-800 rounded-full z-20" /><div className="absolute bottom-1/2 left-1/2 w-3 h-20 bg-red-500 rounded-full z-10 origin-bottom" style={{ transform: 'translateX(-50%) rotate(270deg)' }} /><div className="absolute bottom-1/2 left-1/2 w-2 h-28 bg-blue-500 rounded-full z-10 origin-bottom" style={{ transform: 'translateX(-50%) rotate(0deg)' }} /></div>;
+                if (slideIndex === 1) return <div className="relative w-64 h-64 sm:w-80 sm:h-80 bg-white rounded-full border-[10px] border-slate-200 shadow-lg flex items-center justify-center">{[...Array(12)].map((_, i) => (<div key={i} className="absolute inset-0 text-center pt-2 font-fredoka font-bold text-3xl text-slate-600" style={{ transform: `rotate(${(i + 1) * 30}deg)` }}><span className="inline-block" style={{ transform: `rotate(-${(i + 1) * 30}deg)` }}>{i + 1}</span></div>))}<div className="absolute w-6 h-6 bg-slate-800 rounded-full z-20" /><div className="absolute bottom-1/2 left-1/2 w-3 h-20 bg-red-500 rounded-full z-10 origin-bottom" style={{ transform: 'translateX(-50%) rotate(270deg)' }}><span className="absolute -top-8 -left-3 text-4xl">🐢</span></div><div className="absolute bottom-1/2 left-1/2 w-2 h-28 bg-blue-500 rounded-full z-10 origin-bottom" style={{ transform: 'translateX(-50%) rotate(0deg)' }}><span className="absolute -top-10 -left-4 text-4xl">🐰</span></div></div>;
+                if (slideIndex === 2) return <div className="relative w-64 h-64 sm:w-80 sm:h-80 bg-white rounded-full border-[10px] border-slate-200 shadow-lg flex items-center justify-center">{[...Array(12)].map((_, i) => (<div key={i} className={`absolute inset-0 text-center pt-2 font-fredoka font-bold text-3xl ${i === 0 || i === 11 ? 'text-blue-600' : 'text-slate-400'}`} style={{ transform: `rotate(${(i + 1) * 30}deg)` }}><span className="inline-block" style={{ transform: `rotate(-${(i + 1) * 30}deg)` }}>{i + 1}</span></div>))}<div className="absolute w-6 h-6 bg-slate-800 rounded-full z-20" /><div className="absolute bottom-1/2 left-1/2 w-3 h-16 bg-slate-300 rounded-full origin-bottom" style={{ transform: 'translateX(-50%) rotate(130deg)' }} /><div className="absolute bottom-1/2 left-1/2 w-2 h-24 bg-blue-300/50 rounded-full origin-bottom" style={{ transform: 'translateX(-50%) rotate(0deg)' }} /><div className="absolute top-20 right-10 bg-yellow-400 text-yellow-900 font-bold px-3 py-1 rounded-lg">5 Menit!</div></div>;
+                return <div className="text-center font-fredoka text-2xl text-stone-500">Visual untuk Slide {slideIndex + 1}</div>;
+            };
+
+            const renderSimulationVisuals = () => {
+                const currentSim = SIMULATION_QUESTIONS[simQuestionIndex];
+                const hRot = (userTime.h % 12) * 30 + (userTime.m / 60) * 30;
+                const mRot = userTime.m * 6;
+                return (
+                    <div className="w-full h-full flex flex-col gap-2 py-1 relative">
+                        <div className="flex justify-center"><div className="bg-white/80 p-4 rounded-xl shadow-md border-l-4 border-yellow-500"><p className="font-fredoka font-bold text-xl">{currentSim.text}</p></div></div>
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="relative w-64 h-64 bg-white rounded-full border-[10px] border-blue-500 shadow-xl flex items-center justify-center">
+                                {[...Array(12)].map((_, i) => (<div key={i} className="absolute inset-2 text-center" style={{ transform: `rotate(${(i + 1) * 30}deg)` }}><span className="inline-block text-xl font-bold" style={{ transform: `rotate(-${(i + 1) * 30}deg)` }}>{i + 1}</span></div>))}
+                                <div className="absolute bottom-1/2 left-1/2 w-4 h-20 bg-red-500 rounded-full origin-bottom" style={{ transform: `translateX(-50%) rotate(${hRot}deg)` }} />
+                                <div className="absolute bottom-1/2 left-1/2 w-2.5 h-28 bg-blue-500 rounded-full origin-bottom" style={{ transform: `translateX(-50%) rotate(${mRot}deg)` }} />
+                                <div className="absolute w-4 h-4 bg-slate-800 rounded-full z-20" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2 px-8">
+                            <div className="flex items-center gap-2"><span className="text-2xl">🐢</span><input type="range" min="1" max="12" value={userTime.h} onChange={(e) => setUserTime(prev => ({ ...prev, h: parseInt(e.target.value) }))} className="w-full h-4 bg-red-200 rounded-full" /></div>
+                            <div className="flex items-center gap-2"><span className="text-2xl">🐰</span><input type="range" min="0" max="59" value={userTime.m} onChange={(e) => setUserTime(prev => ({ ...prev, m: parseInt(e.target.value) }))} className="w-full h-4 bg-blue-200 rounded-full" /></div>
+                        </div>
+                        <div className="flex justify-center mt-2 relative">
+                            <button onClick={handleSimCheckAnswer} className={`px-8 py-2 rounded-full font-bold text-white shadow-md ${isSimCorrect === true ? 'bg-green-500' : 'bg-blue-500'}`}>{isSimCorrect === true ? "BENAR!" : "CEK"}</button>
+                            {isSimCorrect && <button onClick={() => setSimQuestionIndex((p) => (p + 1) % SIMULATION_QUESTIONS.length)} className="absolute right-0 bg-white p-2 rounded-full shadow-md"><ChevronRight /></button>}
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderQuizVisuals = () => {
+                if (quizFinished) return <div className="flex flex-col items-center justify-center h-full gap-4"><Star size={80} className="text-yellow-400 fill-yellow-400" /><h2 className="text-4xl font-black text-[#8b5a2b]">Skor: {quizScore}</h2><button onClick={() => onModeChange('learning')} className="bg-green-500 text-white px-6 py-2 rounded-full font-bold">Kembali</button></div>;
+                const q = QUIZ_QUESTIONS[quizIndex];
+                return (
+                    <div className="w-full h-full flex flex-col gap-4 p-4">
+                        <div className="flex justify-between"><div className="bg-yellow-400 px-3 py-1 rounded-full font-bold text-yellow-900 flex gap-2"><Coins size={18}/> {quizScore}</div><div className="bg-purple-500 text-white px-3 py-1 rounded-full font-bold">Soal {quizIndex + 1}</div></div>
+                        <div className="bg-white/80 p-4 rounded-xl shadow-md text-center"><p className="font-bold text-lg">{q.question}</p></div>
+                        <div className="relative w-32 h-32 mx-auto bg-white rounded-full border-4 border-slate-600 flex items-center justify-center">
+                            <div className="absolute w-2 h-2 bg-slate-800 rounded-full z-20" />
+                            <div className="absolute bottom-1/2 left-1/2 w-2 h-10 bg-slate-800 rounded-full origin-bottom" style={{ transform: `translateX(-50%) rotate(${q.time.h * 30}deg)` }} />
+                            <div className="absolute bottom-1/2 left-1/2 w-1 h-14 bg-slate-800 rounded-full origin-bottom" style={{ transform: `translateX(-50%) rotate(${q.time.m * 6}deg)` }} />
+                        </div>
+                        <div className="flex gap-2 justify-center">{q.options.map((opt, i) => (<button key={i} onClick={() => handleQuizAnswer(opt.isCorrect)} className={`flex-1 py-3 rounded-xl font-bold text-white shadow-md ${opt.color}`}>{opt.text}</button>))}</div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="absolute inset-0 z-40 flex items-center justify-center p-4 sm:p-8 animate-pop">
+                    <div className="flex w-full h-full max-w-6xl gap-6 sm:gap-10">
+                        {/* Sidebar */}
+                        <div className="flex flex-col gap-4 w-1/4 min-w-[200px] justify-center">
+                            <button onClick={() => onModeChange('learning')} className={`w-full h-20 rounded-2xl border-4 flex items-center p-4 gap-4 ${mode === 'learning' ? 'bg-blue-500 border-blue-700 text-white scale-105' : 'bg-stone-200 text-stone-600'}`}><BookOpen size={24} /><span className="font-bold text-lg">Belajar</span></button>
+                            <button onClick={() => onModeChange('simulation')} className={`w-full h-20 rounded-2xl border-4 flex items-center p-4 gap-4 ${mode === 'simulation' ? 'bg-yellow-500 border-yellow-700 text-white scale-105' : 'bg-stone-200 text-stone-600'}`}><Gamepad2 size={24} /><span className="font-bold text-lg">Simulasi</span></button>
+                            <button onClick={() => onModeChange('quiz')} className={`w-full h-20 rounded-2xl border-4 flex items-center p-4 gap-4 ${mode === 'quiz' ? 'bg-purple-500 border-purple-700 text-white scale-105' : 'bg-stone-200 text-stone-600'}`}><GraduationCap size={24} /><span className="font-bold text-lg">Kuis</span></button>
+                            <button onClick={onBack} className="mt-auto w-16 h-16 bg-red-500 rounded-full border-4 border-red-700 shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform"><Home size={28} /></button>
+                        </div>
+                        {/* Content Board */}
+                        <div className="flex-1 relative flex items-center">
+                            <div className="relative w-full aspect-[4/3] bg-[#fdf6e3] rounded-[3rem] border-[12px] border-[#8b5a2b] shadow-2xl p-8 flex flex-col items-center justify-between overflow-hidden">
+                                {mode === 'learning' ? (
+                                    <>
+                                        <div className="text-center"><h1 className="text-4xl font-extrabold text-[#8b5a2b]">Materi Waktu</h1></div>
+                                        <div className="flex-1 flex items-center justify-center">{renderLearningVisuals()}</div>
+                                        <div className="w-full flex justify-between items-center">
+                                            <button onClick={handlePrev} disabled={slideIndex === 0} className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold ${slideIndex === 0 ? 'opacity-0' : 'bg-stone-300'}`}><ArrowLeft /> Kembali</button>
+                                            <div className="flex gap-2">{[0, 1, 2, 3, 4, 5].map(i => (<div key={i} className={`w-3 h-3 rounded-full ${i === slideIndex ? 'bg-[#8b5a2b]' : 'bg-[#8b5a2b]/30'}`} />))}</div>
+                                            <button onClick={handleNext} disabled={slideIndex === 5} className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold bg-green-500 text-white ${slideIndex === 5 ? 'opacity-50' : ''}`}>Lanjut <ArrowRight /></button>
+                                        </div>
+                                    </>
+                                ) : mode === 'simulation' ? renderSimulationVisuals() : renderQuizVisuals()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 7. WeightAdventure (Simplified for single file)
+        const WeightAdventure = ({ onBack, onSlideChange, mode, onModeChange }) => {
+             const [slideIndex, setSlideIndex] = useState(0);
+             const [simStage, setSimStage] = useState('sorting');
+             const [sortIndex, setSortIndex] = useState(0);
+             const [completedSort, setCompletedSort] = useState(false);
+             const [sortFeedback, setSortFeedback] = useState(null);
+             const [leftPan, setLeftPan] = useState(null);
+             const [rightPan, setRightPan] = useState(null);
+             const [scaleTilt, setScaleTilt] = useState(0);
+             const [quizIndex, setQuizIndex] = useState(0);
+             const [quizScore, setQuizScore] = useState(0);
+             const [quizFinished, setQuizFinished] = useState(false);
+
+             useEffect(() => { 
+                if (mode === 'learning') { setSlideIndex(0); onSlideChange(0); }
+                else if (mode === 'simulation') { setSimStage('sorting'); setSortIndex(0); setCompletedSort(false); setLeftPan(null); setRightPan(null); }
+                else if (mode === 'quiz') { setQuizIndex(0); setQuizScore(0); setQuizFinished(false); }
+             }, [mode]);
+
+             useEffect(() => {
+                const lw = leftPan ? leftPan.weight : 0;
+                const rw = rightPan ? rightPan.weight : 0;
+                if (lw === 0 && rw === 0) setScaleTilt(0);
+                else if (lw > rw) setScaleTilt(-15);
+                else if (rw > lw) setScaleTilt(15);
+                else setScaleTilt(0);
+             }, [leftPan, rightPan]);
+
+             const handleNext = () => { if(slideIndex < 4) { setSlideIndex(p=>p+1); onSlideChange(p=>p+1); }};
+             const handlePrev = () => { if(slideIndex > 0) { setSlideIndex(p=>p-1); onSlideChange(p=>p-1); }};
+
+             // ... (Renderers simplified for HTML size - Logic identical to TSX)
+             const renderHumanScaleVisual = () => <div className="text-center mt-10"><h1 className="text-4xl font-black text-[#8b5a2b]">Apa itu Berat?</h1><p className="text-xl">Gaya tarik bumi pada benda.</p><div className="flex justify-center gap-10 mt-8"><div className="flex flex-col items-center"><MoveDown size={40} className="text-red-500"/><span className="font-bold text-red-500">Berat = Turun</span></div><div className="w-1 h-32 bg-stone-300"></div><div className="flex flex-col items-center"><MoveUp size={40} className="text-green-500"/><span className="font-bold text-green-500">Ringan = Naik</span></div></div></div>;
+             
+             const renderSortingSim = () => {
+                if (completedSort) return <div className="flex flex-col items-center justify-center h-full gap-4"><CheckCircle size={64} className="text-green-500"/><h2 className="text-3xl font-bold">Hebat!</h2><button onClick={() => setSimStage('comparison')} className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold">Lanjut</button></div>;
+                const item = SORTING_ITEMS[sortIndex];
+                const handleSort = (type) => {
+                    if (item.type === type) { setSortFeedback('correct'); setTimeout(() => { setSortFeedback(null); if (sortIndex < SORTING_ITEMS.length - 1) setSortIndex(p=>p+1); else setCompletedSort(true); }, 1000); }
+                    else { setSortFeedback('wrong'); setTimeout(() => setSortFeedback(null), 1000); }
+                };
+                return (
+                    <div className="flex flex-col items-center h-full pt-4">
+                         <div className={`w-32 h-32 ${item.color} rounded-xl flex flex-col items-center justify-center border-4 border-stone-300 shadow-lg mb-8 relative`}>
+                            <span className="text-5xl">{item.emoji}</span><span>{item.name}</span>
+                            {sortFeedback && <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg text-4xl">{sortFeedback === 'correct' ? '✅' : '❌'}</div>}
+                         </div>
+                         <div className="flex gap-8">
+                            <button onClick={() => handleSort('light')} className="p-4 bg-red-100 border-4 border-red-400 rounded-xl font-bold text-red-700 hover:scale-105 transition-transform">Ringan</button>
+                            <button onClick={() => handleSort('heavy')} className="p-4 bg-emerald-100 border-4 border-emerald-400 rounded-xl font-bold text-emerald-700 hover:scale-105 transition-transform">Berat</button>
+                         </div>
+                    </div>
+                );
+             };
+
+             const renderComparisonSim = () => (
+                <div className="flex flex-col items-center h-full pt-4 relative">
+                    <div className="flex justify-between w-full px-4 mb-4"><button onClick={()=>setSimStage('sorting')}><ArrowLeft/></button><span className="font-bold">Bandingkan Berat</span><button onClick={()=>{setLeftPan(null);setRightPan(null)}}><RefreshCcw/></button></div>
+                    <div className="relative w-80 h-40 flex items-end justify-center mb-8">
+                         <div className="absolute bottom-12 w-full h-3 bg-amber-800 rounded-full transition-transform duration-700 z-10 flex justify-between px-4" style={{transform: `rotate(${scaleTilt}deg)`}}>
+                            <div className="relative transform -translate-y-full" style={{transform:`translateY(100%) rotate(${-scaleTilt}deg)`}}><div className="h-16 w-0.5 bg-stone-400 -top-16 relative"><div className="absolute bottom-0 -left-10 w-20 h-8 bg-stone-300 border-b-4 border-stone-400 rounded-b-xl flex justify-center">{leftPan ? <span className="text-3xl -mt-4">{leftPan.emoji}</span> : <span className="text-xs text-gray-500">Kiri</span>}</div></div></div>
+                            <div className="relative transform -translate-y-full" style={{transform:`translateY(100%) rotate(${-scaleTilt}deg)`}}><div className="h-16 w-0.5 bg-stone-400 -top-16 relative"><div className="absolute bottom-0 -left-10 w-20 h-8 bg-stone-300 border-b-4 border-stone-400 rounded-b-xl flex justify-center">{rightPan ? <span className="text-3xl -mt-4">{rightPan.emoji}</span> : <span className="text-xs text-gray-500">Kanan</span>}</div></div></div>
+                         </div>
+                         <div className="absolute bottom-0 w-8 h-14 bg-stone-600 rounded-t-full z-0"/>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto w-full px-2 pb-2">
+                        {WEIGHT_ITEMS.map(item => (
+                            <div key={item.id} className="flex flex-col items-center shrink-0 border p-1 rounded bg-white">
+                                <span className="text-3xl">{item.emoji}</span>
+                                <div className="flex gap-1 mt-1"><button onClick={()=>setLeftPan(item)} className="text-[10px] bg-blue-500 text-white px-1 rounded">L</button><button onClick={()=>setRightPan(item)} className="text-[10px] bg-green-500 text-white px-1 rounded">R</button></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             );
+
+             const renderQuiz = () => {
+                 if(quizFinished) return <div className="flex flex-col items-center justify-center gap-4"><h2 className="text-3xl font-bold">Skor: {quizScore}</h2><button onClick={()=>onModeChange('learning')} className="bg-green-500 text-white px-6 py-2 rounded-full font-bold">Selesai</button></div>
+                 const q = WEIGHT_QUIZ_QUESTIONS[quizIndex];
+                 const handleAns = (isCorrect) => { if(isCorrect) setQuizScore(p=>p+10); setTimeout(() => { if(quizIndex < WEIGHT_QUIZ_QUESTIONS.length-1) setQuizIndex(p=>p+1); else setQuizFinished(true); }, 500); }
+                 return <div className="p-4 flex flex-col gap-4"><div className="text-center font-bold">{q.question}</div><div className="flex flex-col gap-2">{q.options.map((opt,i)=><button key={i} onClick={()=>handleAns(opt.isCorrect)} className={`p-3 rounded-lg text-white font-bold ${opt.color}`}>{opt.text}</button>)}</div></div>
+             }
+
+             return (
+                <div className="absolute inset-0 z-40 flex items-center justify-center p-4 sm:p-8 animate-pop">
+                    <div className="flex w-full h-full max-w-6xl gap-6 sm:gap-10">
+                        <div className="flex flex-col gap-4 w-1/4 justify-center">
+                            <button onClick={()=>onModeChange('learning')} className={`h-16 rounded-xl border-4 font-bold ${mode==='learning'?'bg-blue-500 text-white':'bg-stone-200 text-stone-600'}`}>Belajar</button>
+                            <button onClick={()=>onModeChange('simulation')} className={`h-16 rounded-xl border-4 font-bold ${mode==='simulation'?'bg-yellow-500 text-white':'bg-stone-200 text-stone-600'}`}>Simulasi</button>
+                            <button onClick={()=>onModeChange('quiz')} className={`h-16 rounded-xl border-4 font-bold ${mode==='quiz'?'bg-purple-500 text-white':'bg-stone-200 text-stone-600'}`}>Kuis</button>
+                            <button onClick={onBack} className="mt-auto h-16 w-16 bg-red-500 rounded-full text-white flex items-center justify-center border-4 border-red-700 shadow-lg"><Home/></button>
+                        </div>
+                        <div className="flex-1 relative flex items-center">
+                            <div className="relative w-full aspect-[4/3] bg-[#fdf6e3] rounded-[3rem] border-[12px] border-[#8b5a2b] shadow-2xl p-6 flex flex-col justify-between overflow-hidden">
+                                {mode==='learning' ? (
+                                    <>
+                                        <div className="flex-1 flex items-center justify-center">{slideIndex===0?renderHumanScaleVisual():<div className="text-2xl font-bold text-stone-500">Visual {slideIndex+1}</div>}</div>
+                                        <div className="flex justify-between w-full"><button onClick={handlePrev} disabled={slideIndex===0} className={`font-bold ${slideIndex===0?'opacity-0':''}`}>Kembali</button><div className="flex gap-1">{[0,1,2,3,4].map(i=><div key={i} className={`w-2 h-2 rounded-full ${i===slideIndex?'bg-brown-600':'bg-gray-300'}`}/>)}</div><button onClick={handleNext} disabled={slideIndex===4} className={`font-bold text-green-600 ${slideIndex===4?'opacity-50':''}`}>Lanjut</button></div>
+                                    </>
+                                ) : mode==='simulation' ? (simStage==='sorting'?renderSortingSim():renderComparisonSim()) : renderQuiz()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+             );
+        };
+
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [timeOfDay, setTimeOfDay] = useState('morning');
+            const [profile, setProfile] = useState(DEFAULT_PROFILE);
+            const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+            const [currentView, setCurrentView] = useState('LOBBY');
+            const [adventureMode, setAdventureMode] = useState('learning');
+            const [currentLessonStep, setCurrentLessonStep] = useState(0);
+
+            // Time Cycle
+            useEffect(() => {
+                const timeCycle = ['morning', 'noon', 'afternoon', 'night'];
+                const interval = setInterval(() => {
+                    if (currentView === 'TIME_ADVENTURE' && adventureMode === 'simulation') return;
+                    setTimeOfDay((prev) => {
+                        const idx = timeCycle.indexOf(prev);
+                        return timeCycle[(idx + 1) % timeCycle.length];
+                    });
+                }, 20000);
+                return () => clearInterval(interval);
+            }, [currentView, adventureMode]);
+
+            // Load Profile
+            useEffect(() => {
+                const saved = localStorage.getItem('mathAdventureProfile');
+                if (saved) try { setProfile(JSON.parse(saved)); } catch(e) {}
+            }, []);
+
+            const handleUpdateName = (name) => {
+                const newP = { ...profile, name }; setProfile(newP); localStorage.setItem('mathAdventureProfile', JSON.stringify(newP));
+            };
+            const handleUpdateAvatar = (avatar) => {
+                const newP = { ...profile, avatar }; setProfile(newP); localStorage.setItem('mathAdventureProfile', JSON.stringify(newP));
+            };
+
+            const getCharacterPositionClass = () => {
+                if (currentView === 'LOBBY') return '';
+                if (adventureMode === 'simulation' || adventureMode === 'quiz') return 'translate-x-[250%] translate-y-[5%]';
+                return 'translate-x-[20%] translate-y-[5%]';
+            };
+
+            return (
+                <div className="relative w-full h-screen overflow-hidden select-none font-sans">
+                    <Background timeOfDay={timeOfDay} theme={currentView === 'WEIGHT_ADVENTURE' ? 'garden' : 'default'} />
+                    <div className={`fixed inset-0 bg-black/30 backdrop-blur-md z-0 transition-opacity duration-500 ${currentView !== 'LOBBY' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
+                    
+                    <div className="relative z-10 w-full h-full p-4 md:p-8">
+                        <PlayerProfile profile={profile} onUpdateName={handleUpdateName} onAvatarClick={() => setIsAvatarModalOpen(true)} />
+                        
+                        <div className={`transition-all duration-700 ease-in-out ${getCharacterPositionClass()}`}>
+                            <GuideCharacter 
+                                playerName={profile.name} 
+                                lessonStep={currentView !== 'LOBBY' ? currentLessonStep : -1} 
+                                adventureMode={currentView !== 'LOBBY' ? adventureMode : undefined} 
+                                adventureType={currentView === 'WEIGHT_ADVENTURE' ? 'weight' : 'time'}
+                                timeOfDay={timeOfDay}
+                            />
+                        </div>
+
+                        {currentView === 'LOBBY' && (
+                            <MenuButtons 
+                                isNight={timeOfDay === 'night'} 
+                                onTimeAdventureClick={() => { setCurrentView('TIME_ADVENTURE'); setAdventureMode('learning'); setCurrentLessonStep(0); setTimeOfDay('morning'); }} 
+                                onWeightAdventureClick={() => { setCurrentView('WEIGHT_ADVENTURE'); setAdventureMode('learning'); setCurrentLessonStep(0); setTimeOfDay('noon'); }} 
+                            />
+                        )}
+
+                        {currentView === 'TIME_ADVENTURE' && (
+                            <TimeAdventure 
+                                mode={adventureMode} 
+                                onModeChange={setAdventureMode} 
+                                onBack={() => { setCurrentView('LOBBY'); setCurrentLessonStep(0); setAdventureMode('learning'); setTimeOfDay('morning'); }}
+                                onSlideChange={setCurrentLessonStep}
+                                setTimeOfDay={setTimeOfDay}
+                            />
+                        )}
+
+                        {currentView === 'WEIGHT_ADVENTURE' && (
+                            <WeightAdventure 
+                                mode={adventureMode}
+                                onModeChange={setAdventureMode}
+                                onBack={() => { setCurrentView('LOBBY'); setCurrentLessonStep(0); setAdventureMode('learning'); setTimeOfDay('morning'); }}
+                                onSlideChange={setCurrentLessonStep}
+                            />
+                        )}
+                    </div>
+
+                    <AvatarSelector isOpen={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} onSelect={handleUpdateAvatar} currentAvatar={profile.avatar} />
+                    
+                    {/* Overlays */}
+                    <div className={`pointer-events-none fixed inset-0 bg-indigo-950/40 z-20 mix-blend-multiply transition-opacity duration-1000 ${timeOfDay === 'night' ? 'opacity-100' : 'opacity-0'}`} />
+                    <div className={`pointer-events-none fixed inset-0 bg-orange-500/20 z-20 mix-blend-overlay transition-opacity duration-1000 ${timeOfDay === 'afternoon' ? 'opacity-100' : 'opacity-0'}`} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
 </html>
