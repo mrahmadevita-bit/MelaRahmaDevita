@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Gamepad2, GraduationCap, Lock, ArrowRight, ArrowLeft, Home, GlassWater, Eye, Sun, Moon, Calendar, Globe, PartyPopper, LayoutGrid, Bed, School, Backpack, Palmtree, MoonStar, Unlock, CheckCircle, ChevronRight, RotateCw, MoveHorizontal, Coins, Star } from 'lucide-react';
-import { AdventureMode } from '../types';
+import { AdventureMode, TimeOfDay } from '../types';
 
 interface Props {
   onBack: () => void;
   onSlideChange: (step: number) => void;
   mode: AdventureMode;
   onModeChange: (mode: AdventureMode) => void;
+  setTimeOfDay: (time: TimeOfDay) => void;
 }
 
 // Simulation Questions
@@ -52,7 +53,7 @@ const QUIZ_QUESTIONS = [
   }
 ];
 
-const TimeAdventure: React.FC<Props> = ({ onBack, onSlideChange, mode, onModeChange }) => {
+const TimeAdventure: React.FC<Props> = ({ onBack, onSlideChange, mode, onModeChange, setTimeOfDay }) => {
   const [slideIndex, setSlideIndex] = useState(0);
   
   // Simulation State
@@ -78,6 +79,29 @@ const TimeAdventure: React.FC<Props> = ({ onBack, onSlideChange, mode, onModeCha
     setQuizScore(0);
     setQuizFinished(false);
   }, [mode]);
+
+  // --- LOGIC: Dynamic Background Change based on Simulation Time ---
+  useEffect(() => {
+    if (mode === 'simulation') {
+        const h = userTime.h;
+        // Mapping Logic for 12-Hour Clock Slider (1-12) to Time of Day
+        // Assumptions for a typical "Day Cycle" in a kids game:
+        // 5, 6, 7, 8, 9 -> Morning (Pagi)
+        // 10, 11, 12, 1 -> Noon (Siang)
+        // 2, 3, 4, 5 -> Afternoon (Sore/Senja)
+        // Note: Night is not explicitly covered by the 1-12 slider in this school-day context,
+        // but can be added if needed. For now, this covers the requested "04.30 = afternoon".
+
+        if (h >= 5 && h <= 9) {
+            setTimeOfDay('morning');
+        } else if (h === 10 || h === 11 || h === 12 || h === 1) {
+            setTimeOfDay('noon');
+        } else if (h >= 2 && h <= 4) {
+            setTimeOfDay('afternoon');
+        }
+    }
+  }, [userTime.h, mode, setTimeOfDay]);
+
 
   const handleNext = () => {
     if (slideIndex < 5) setSlideIndex(prev => prev + 1);

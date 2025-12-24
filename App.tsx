@@ -30,20 +30,27 @@ const App: React.FC = () => {
   useEffect(() => {
     // Sequence of time
     const timeCycle: TimeOfDay[] = ['morning', 'noon', 'afternoon', 'night'];
-    let cycleIndex = 0;
-
+    
     // Set initial state
-    setTimeOfDay('morning');
     setIsLoaded(true);
 
     // Cycle through the day every 20 seconds (simulating time passing)
     const interval = setInterval(() => {
-      cycleIndex = (cycleIndex + 1) % timeCycle.length;
-      setTimeOfDay(timeCycle[cycleIndex]);
+      // PAUSE AUTOMATIC CYCLE IF IN TIME SIMULATION
+      // This allows the simulation to control the background manually
+      if (currentView === 'TIME_ADVENTURE' && adventureMode === 'simulation') {
+        return;
+      }
+
+      setTimeOfDay((prevTime) => {
+        const currentIndex = timeCycle.indexOf(prevTime);
+        const nextIndex = (currentIndex + 1) % timeCycle.length;
+        return timeCycle[nextIndex];
+      });
     }, 20000); // 20 seconds per phase
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentView, adventureMode]); // Add dependencies to react to mode changes
 
   // --- Logic: Load Profile from LocalStorage ---
   useEffect(() => {
@@ -121,11 +128,13 @@ const App: React.FC = () => {
                setCurrentView('TIME_ADVENTURE');
                setAdventureMode('learning');
                setCurrentLessonStep(0);
+               setTimeOfDay('morning'); // Reset to morning when entering
              }}
              onWeightAdventureClick={() => {
                 setCurrentView('WEIGHT_ADVENTURE');
                 setAdventureMode('learning');
                 setCurrentLessonStep(0);
+                setTimeOfDay('noon'); // Garden looks nice at noon
              }}
            />
         )}
@@ -139,8 +148,10 @@ const App: React.FC = () => {
               setCurrentView('LOBBY');
               setCurrentLessonStep(0);
               setAdventureMode('learning');
+              setTimeOfDay('morning');
             }} 
             onSlideChange={setCurrentLessonStep}
+            setTimeOfDay={setTimeOfDay}
           />
         )}
 
@@ -153,6 +164,7 @@ const App: React.FC = () => {
               setCurrentView('LOBBY');
               setCurrentLessonStep(0);
               setAdventureMode('learning');
+              setTimeOfDay('morning');
             }}
             onSlideChange={setCurrentLessonStep}
           />
